@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca Digital — Portal do Educador</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --pe-bg:#f5f7fb; --pe-surface:#fff; --pe-primary:#1e40af; --pe-primary-2:#3b82f6;
+    --pe-accent:#f59e0b; --pe-text:#0f172a; --pe-muted:#64748b; --pe-border:#e2e8f0;
+    --pe-shadow:0 4px 12px rgba(15,23,42,.08); --pe-shadow-lg:0 12px 32px rgba(15,23,42,.15);
+    --pe-radius:12px;
+  }
+  html, body { height:100%; width:100%; overflow-x:hidden; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--pe-bg); color:var(--pe-text); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    -webkit-user-select:none; -moz-user-select:none; user-select:none;
+  }
+
+  .pe-header {
+    background:linear-gradient(135deg,var(--pe-primary) 0%,var(--pe-primary-2) 100%);
+    color:#fff; padding:28px 24px; box-shadow:var(--pe-shadow);
+  }
+  .pe-header-inner { max-width:1280px; margin:0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
+  .pe-brand h1 { font-size:24px; font-weight:700; letter-spacing:-.3px; }
+  .pe-brand p { font-size:14px; opacity:.9; margin-top:2px; }
+  .pe-stats { display:flex; gap:24px; font-size:13px; }
+  .pe-stats div { text-align:center; }
+  .pe-stats strong { font-size:20px; display:block; font-weight:700; }
+
+  .pe-toolbar { max-width:1280px; margin:24px auto 0; padding:0 24px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  .pe-search { flex:1; min-width:240px; position:relative; }
+  .pe-search input {
+    width:100%; padding:12px 16px 12px 44px; border:1px solid var(--pe-border);
+    border-radius:var(--pe-radius); font-size:14px; background:var(--pe-surface);
+    transition:border-color .2s,box-shadow .2s; font-family:inherit; color:var(--pe-text);
+  }
+  .pe-search input:focus { outline:none; border-color:var(--pe-primary-2); box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+  .pe-search::before { content:"🔍"; position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:16px; opacity:.6; }
+  .pe-refresh {
+    padding:10px 16px; border:1px solid var(--pe-border); background:var(--pe-surface);
+    border-radius:8px; font-size:13px; cursor:pointer; color:var(--pe-text); font-family:inherit;
+    transition:all .2s; display:flex; align-items:center; gap:6px;
+  }
+  .pe-refresh:hover { border-color:var(--pe-primary-2); }
+  .pe-refresh:disabled { opacity:.5; cursor:wait; }
+
+  .pe-grid {
+    max-width:1280px; margin:24px auto; padding:0 24px 48px;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:24px;
+  }
+  .pe-book {
+    background:var(--pe-surface); border-radius:var(--pe-radius); overflow:hidden;
+    cursor:pointer; transition:transform .25s ease,box-shadow .25s ease;
+    box-shadow:var(--pe-shadow); display:flex; flex-direction:column;
+  }
+  .pe-book:hover { transform:translateY(-6px); box-shadow:var(--pe-shadow-lg); }
+  .pe-book-cover {
+    aspect-ratio:3/4; background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);
+    position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .pe-book-cover img { width:100%; height:100%; object-fit:cover; pointer-events:none; -webkit-user-drag:none; }
+  .pe-book-cover-fallback { color:#fff; text-align:center; padding:16px; font-weight:600; font-size:14px; line-height:1.3; }
+  .pe-book-tag {
+    position:absolute; top:10px; right:10px; background:var(--pe-accent); color:#fff;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    padding:4px 8px; border-radius:4px;
+  }
+  .pe-book-info { padding:14px; flex:1; display:flex; flex-direction:column; }
+  .pe-book-title {
+    font-size:14px; font-weight:600; color:var(--pe-text); line-height:1.3; margin-bottom:4px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .pe-book-author { font-size:12px; color:var(--pe-muted); }
+
+  .pe-state {
+    grid-column:1/-1; text-align:center; padding:64px 24px; color:var(--pe-muted);
+  }
+  .pe-state h3 { font-size:18px; margin-bottom:8px; color:var(--pe-text); }
+  .pe-spinner {
+    display:inline-block; width:32px; height:32px; border:3px solid var(--pe-border);
+    border-top-color:var(--pe-primary); border-radius:50%; animation:pe-spin .8s linear infinite;
+    margin-bottom:16px;
+  }
+  @keyframes pe-spin { to { transform:rotate(360deg); } }
+
+  .pe-error {
+    background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+    padding:16px; border-radius:8px; margin-top:16px; text-align:left;
+    font-family:'Courier New',monospace; font-size:12px;
+  }
+  .pe-btn {
+    padding:10px 20px; border:none; border-radius:8px; font-size:14px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .2s; margin-top:16px;
+    background:var(--pe-primary); color:#fff;
+  }
+  .pe-btn:hover { background:#1e3a8a; }
+
+  .pe-reader { position:fixed; inset:0; background:rgba(15,23,42,.95); z-index:9999; display:none; flex-direction:column; }
+  .pe-reader.open { display:flex; }
+  .pe-reader-bar { background:var(--pe-text); color:#fff; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .pe-reader-title { font-size:14px; font-weight:500; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pe-reader-close {
+    background:rgba(255,255,255,.15); border:none; color:#fff; padding:8px 16px;
+    border-radius:6px; font-size:13px; cursor:pointer; font-family:inherit; transition:background .2s;
+  }
+  .pe-reader-close:hover { background:rgba(255,255,255,.25); }
+  .pe-reader-frame { flex:1; width:100%; border:none; background:#1a1a1a; }
+
+  @media (max-width:640px) {
+    .pe-header { padding:20px 16px; }
+    .pe-brand h1 { font-size:20px; }
+    .pe-stats { gap:16px; }
+    .pe-stats strong { font-size:16px; }
+    .pe-grid { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:16px; padding:0 16px 32px; }
+    .pe-toolbar { padding:0 16px; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="pe-header">
+    <div class="pe-header-inner">
+      <div class="pe-brand">
+        <h1>📚 Biblioteca Digital</h1>
+        <p>Portal do Educador — acervo pedagógico</p>
+      </div>
+      <div class="pe-stats">
+        <div><strong id="pe-count">—</strong>livros</div>
+        <div><strong id="pe-cached">—</strong>atualizado</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="pe-toolbar">
+    <div class="pe-search">
+      <input id="pe-search" type="text" placeholder="Buscar por título..." autocomplete="off">
+    </div>
+    <button class="pe-refresh" type="button" id="pe-refresh" title="Atualizar acervo">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <main class="pe-grid" id="pe-grid">
+    <div class="pe-state">
+      <div class="pe-spinner"></div>
+      <h3>Carregando acervo...</h3>
+      <p>Conectando ao Google Drive</p>
+    </div>
+  </main>
+
+  <div class="pe-reader" id="pe-reader" role="dialog" aria-label="Leitor de PDF">
+    <div class="pe-reader-bar">
+      <div class="pe-reader-title" id="pe-reader-title"></div>
+      <button class="pe-reader-close" id="pe-reader-close" type="button">✕ Fechar</button>
+    </div>
+    <iframe class="pe-reader-frame" id="pe-reader-frame" title="Leitor de PDF"
+            allow="autoplay" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     CONFIGURAÇÃO — APONTE PARA SEU PROXY PHP
+     ========================================================= */
+  const PROXY_URL = 'https://SEU-DOMINIO.com.br/drive-proxy.php';
+
+  /* =========================================================
+     ESTADO
+     ========================================================= */
+  let ACERVO = [];
+  let termoBusca = "";
+
+  /* =========================================================
+     FETCH DO PROXY
+     ========================================================= */
+  async function carregarAcervo(forceRefresh = false) {
+    const grid = document.getElementById('pe-grid');
+    const btnRefresh = document.getElementById('pe-refresh');
+
+    grid.innerHTML = `
+      <div class="pe-state">
+        <div class="pe-spinner"></div>
+        <h3>${forceRefresh ? 'Atualizando acervo...' : 'Carregando acervo...'}</h3>
+        <p>Conectando ao Google Drive</p>
+      </div>`;
+
+    btnRefresh.disabled = true;
+
+    try {
+      const url = `${PROXY_URL}?action=list${forceRefresh ? '&refresh=1' : ''}`;
+      const resp = await fetch(url, { method: 'GET' });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`HTTP ${resp.status} — ${txt.substring(0, 200)}`);
+      }
+
+      const data = await resp.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Resposta inválida');
+      }
+
+      ACERVO = data.acervo || [];
+
+      // Atualiza stats
+      document.getElementById('pe-count').textContent = ACERVO.length;
+      if (data.cached_at) {
+        const dt = new Date(data.cached_at);
+        document.getElementById('pe-cached').textContent =
+          dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      renderGrade();
+    } catch (err) {
+      console.error('Falha ao carregar acervo:', err);
+      grid.innerHTML = `
+        <div class="pe-state">
+          <h3>⚠️ Erro ao carregar acervo</h3>
+          <p>Não foi possível conectar ao Google Drive.</p>
+          <div class="pe-error">${escapeHtml(String(err.message || err))}</div>
+          <button class="pe-btn" type="button" id="pe-retry">Tentar novamente</button>
+        </div>`;
+      const retry = document.getElementById('pe-retry');
+      if (retry) retry.onclick = () => carregarAcervo(false);
+    } finally {
+      btnRefresh.disabled = false;
+    }
+  }
+
+  /* =========================================================
+     RENDER
+     ========================================================= */
+  function renderGrade() {
+    const grid = document.getElementById('pe-grid');
+
+    if (ACERVO.length === 0) {
+      grid.innerHTML = `
+        <div class="pe-state">
+          <h3>📭 Pasta vazia</h3>
+          <p>Nenhum PDF encontrado na pasta do Drive.</p>
+        </div>`;
+      return;
+    }
+
+    const livrosFiltrados = ACERVO.filter(livro => {
+      if (!termoBusca) return true;
+      return livro.title.toLowerCase().includes(termoBusca);
+    });
+
+    if (livrosFiltrados.length === 0) {
+      grid.innerHTML = `
+        <div class="pe-state">
+          <h3>Nenhum livro encontrado</h3>
+          <p>Nenhum título corresponde à busca "${escapeHtml(termoBusca)}"</p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = livrosFiltrados.map(livro => `
+      <article class="pe-book" data-id="${livro.id}">
+        <div class="pe-book-cover">
+          ${livro.tag ? `<span class="pe-book-tag">${escapeHtml(livro.tag)}</span>` : ''}
+          ${livro.thumbnail
+            ? `<img src="${escapeAttr(livro.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+               <div class="pe-book-cover-fallback" style="display:none">${escapeHtml(livro.title)}</div>`
+            : `<div class="pe-book-cover-fallback">${escapeHtml(livro.title)}</div>`}
+        </div>
+        <div class="pe-book-info">
+          <h3 class="pe-book-title">${escapeHtml(livro.title)}</h3>
+          <p class="pe-book-author">${escapeHtml(livro.author || '')}</p>
+        </div>
+      </article>
+    `).join('');
+
+    grid.querySelectorAll('.pe-book').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = parseInt(card.dataset.id, 10);
+        const livro = ACERVO.find(l => l.id === id);
+        if (livro) abrirLeitor(livro);
+      });
+    });
+  }
+
+  /* =========================================================
+     LEITOR
+     ========================================================= */
+  function abrirLeitor(livro) {
+    if (!livro.driveId) { alert('⚠️ Livro sem ID configurado.'); return; }
+    document.getElementById('pe-reader-title').textContent = livro.title;
+    document.getElementById('pe-reader-frame').src =
+      `https://drive.google.com/file/d/${livro.driveId}/preview`;
+    document.getElementById('pe-reader').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharLeitor() {
+    document.getElementById('pe-reader').classList.remove('open');
+    document.getElementById('pe-reader-frame').src = '';
+    document.body.style.overflow = '';
+  }
+
+  /* =========================================================
+     UTILS — escape de HTML pra segurança contra XSS
+     ========================================================= */
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  /* =========================================================
+     PROTEÇÕES CONTRA CÓPIA
+     ========================================================= */
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && ['s','p','c','u'].includes(k)) e.preventDefault();
+    if (e.key === 'F12') e.preventDefault();
+    if (e.key === 'Escape') fecharLeitor();
+  });
+  document.addEventListener('dragstart', e => e.preventDefault());
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('pe-search').addEventListener('input', e => {
+      termoBusca = e.target.value.trim().toLowerCase();
+      renderGrade();
+    });
+    document.getElementById('pe-reader-close').addEventListener('click', fecharLeitor);
+    document.getElementById('pe-refresh').addEventListener('click', () => carregarAcervo(true));
+
+    carregarAcervo(false);
+  });
+
+})();
+</script>
+</body>
+</html>
